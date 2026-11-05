@@ -2,6 +2,7 @@ mod ant;
 
 use crate::ant::Ant;
 use macroquad::prelude::*;
+use macroquad::rand::RandGenerator;
 use std::f32::consts::PI;
 use std::time::Instant;
 
@@ -29,11 +30,15 @@ impl SimState {
 #[macroquad::main("Ants")]
 async fn main() {
     let mut state = SimState::new();
+    let rand = RandGenerator::new();
 
     loop {
         clear_background(BLACK);
         let frame_time = get_frame_time();
-        state.ants.iter_mut().for_each(|ant| ant.step(frame_time));
+        state
+            .ants
+            .iter_mut()
+            .for_each(|ant| ant.step(frame_time, &rand));
 
         state.ants.iter().for_each(|ant| ant.render());
 
