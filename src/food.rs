@@ -12,7 +12,7 @@ pub struct Food {
 }
 
 impl Food {
-    const AREA_PER_AMOUNT: f32 = 10.0;
+    const AREA_PER_AMOUNT: f32 = 5.0;
 
     fn calc_radius(amount: u32) -> f32 {
         ((amount as f32) * Self::AREA_PER_AMOUNT / PI).sqrt()
@@ -40,13 +40,10 @@ impl Food {
 
     pub fn take(&mut self) -> bool {
         if self.amount == 0 {
-            println!("No food left!");
-
             return false;
         }
         self.amount -= 1;
         self.radius = Self::calc_radius(self.amount);
-        println!("Taking food: {}", self.amount);
         true
     }
 }

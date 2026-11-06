@@ -10,7 +10,7 @@ pub struct Nest {
 }
 
 impl Nest {
-    const DELTA: f32 = 1.0;
+    const DELTA: f32 = 40.0;
 
     pub fn new(x: f32, y: f32, r: f32) -> Self {
         Nest {
@@ -23,9 +23,9 @@ impl Nest {
     }
 
     pub fn give(&mut self, rand: &RandGenerator) {
-        if rand.rand() % 5 != 0 {
-            return;
-        }
+        // if rand.rand() % 5 != 0 {
+        //     return;
+        // }
 
         self.radius = ((PI * self.radius * self.radius + Self::DELTA) / PI).sqrt();
     }

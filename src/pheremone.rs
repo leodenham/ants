@@ -78,12 +78,21 @@ impl PheromoneGrid {
             let tile = &mut self.tiles[i * self.width + j];
             match ant.has_food() {
                 true => {
-                    tile.from_food += PheromoneTile::FROM_FOOD_CONSTANT * dt;
+                    tile.from_food +=
+                        PheromoneTile::FROM_FOOD_CONSTANT * dt * ant.giving_off_amount();
                 }
                 false => {
-                    tile.from_home += PheromoneTile::FROM_HOME_CONSTANT * dt;
+                    tile.from_home +=
+                        PheromoneTile::FROM_HOME_CONSTANT * dt * ant.giving_off_amount();
                 }
             }
+        });
+
+        self.tiles.iter_mut().for_each(|tile| {
+            tile.from_home = tile.from_home.clamp(0.0, 1.0);
+            tile.from_food = tile.from_food.clamp(0.0, 1.0);
+            tile.from_home *= 0.999;
+            tile.from_food *= 0.999;
         })
     }
 

@@ -2,11 +2,11 @@ use crate::SimState;
 use crate::food::Food;
 use crate::nest::Nest;
 use crate::pheremone::{PheromoneGrid, PheromoneTile};
-use macroquad::color::{GREEN, RED};
+use macroquad::color::{BROWN, GREEN, RED};
 use macroquad::math::{FloatExt, Vec2};
 use macroquad::prelude::{BLUE, draw_rectangle, screen_height};
 use macroquad::rand::RandGenerator;
-use macroquad::shapes::{DrawRectangleParams, draw_rectangle_ex};
+use macroquad::shapes::{DrawRectangleParams, draw_circle, draw_rectangle_ex};
 use macroquad::window::screen_width;
 use std::cmp::min;
 use std::f32::consts::{PI, TAU};
@@ -15,6 +15,7 @@ pub struct Ant {
     pos: Vec2,
     direction: f32,
     has_food: bool,
+    giving_off_amount: f32,
 }
 
 impl Ant {
@@ -26,14 +27,15 @@ impl Ant {
     const RANDOM_ROTATE_RANGE: f32 = TAU / 40.0;
     const EDGE_SHYNESS: f32 = 0.05; // % from distance
 
-    const TURN_HOME_STRENGTH: f32 = 1.0;
-    const TURN_FOOD_STRENGTH: f32 = 1.0;
+    const TURN_HOME_STRENGTH: f32 = 0.005;
+    const TURN_FOOD_STRENGTH: f32 = 0.02;
 
     pub fn new(x: f32, y: f32, dir: f32) -> Self {
         Ant {
             pos: Vec2 { x, y },
             direction: dir,
             has_food: false,
+            giving_off_amount: 1.0,
         }
     }
 
@@ -46,6 +48,7 @@ impl Ant {
         grid: &PheromoneGrid,
     ) {
         self.pos += Vec2::from_angle(self.direction) * dt * Ant::SPEED;
+        self.giving_off_amount *= 0.999;
 
         // Check food
         if (!self.has_food) {
@@ -53,6 +56,7 @@ impl Ant {
                 Some(food) => {
                     self.has_food = true;
                     food.take();
+                    self.giving_off_amount = 1.0;
                 }
                 None => {}
             };
@@ -60,6 +64,7 @@ impl Ant {
             if nest.does_overlap(self.pos) {
                 nest.give(rand);
                 self.has_food = false;
+                self.giving_off_amount = 1.0;
             }
         }
 
@@ -117,27 +122,31 @@ impl Ant {
     }
 
     fn get_sample_points(&self) -> Vec<(f32, Vec2)> {
-        const ANGLES: [f32; 5] = [-2.0 * PI / 5.0, -PI / 5.0, 0.0, PI / 5.0, 2.0 * PI / 5.0];
-        ANGLES
-            .iter()
+        const NUM_ANGLES: i32 = 5;
+        const MAX_ANGLE: f32 = PI;
+
+        (0..NUM_ANGLES)
+            .map(|i| (i - NUM_ANGLES / 2) as f32 * MAX_ANGLE / NUM_ANGLES as f32)
             .map(|angle| {
                 (
-                    *angle,
-                    Vec2::from_angle(*angle + self.direction) * Self::HEIGHT * 1.2 + self.pos,
+                    angle,
+                    Vec2::from_angle(angle + self.direction) * Self::HEIGHT * 1.5 + self.pos,
                 )
             })
             .collect()
     }
 
     fn turn_for_pheromones(&mut self, grid: &PheromoneGrid) {
+        let mut dir = 0.0;
         self.get_sample_points().iter().for_each(|(angle, point)| {
             let influence: f32 = match (grid.get_at_point(*point), self.has_food) {
                 (None, _) => 0.0,
                 (Some(tile), true) => tile.from_home * Self::TURN_HOME_STRENGTH,
                 (Some(tile), false) => tile.from_food * Self::TURN_FOOD_STRENGTH,
             };
-            self.direction.lerp(*angle, influence);
+            dir += influence * angle;
         });
+        self.direction += dir / 5.0
     }
 
     pub fn render(&self) {
@@ -153,6 +162,10 @@ impl Ant {
                 offset: Vec2 { x: 0.5, y: 0.5 },
             },
         );
+
+        // self.get_sample_points().iter().for_each(|(_, p)| {
+        //     draw_circle(p.x, p.y, 5.0, BROWN);
+        // })
     }
 
     pub fn has_food(&self) -> bool {
@@ -161,5 +174,9 @@ impl Ant {
 
     pub fn pos(&self) -> Vec2 {
         self.pos
+    }
+
+    pub fn giving_off_amount(&self) -> f32 {
+        self.giving_off_amount
     }
 }
