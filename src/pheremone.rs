@@ -91,7 +91,7 @@ impl PheromoneGrid {
         self.tiles.iter_mut().for_each(|tile| {
             tile.from_home = tile.from_home.clamp(0.0, 1.0);
             tile.from_food = tile.from_food.clamp(0.0, 1.0);
-            tile.from_home *= 0.999;
+            tile.from_home *= 0.9999;
             tile.from_food *= 0.999;
         })
     }

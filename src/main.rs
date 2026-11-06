@@ -17,10 +17,11 @@ pub struct SimState {
     food: Vec<Food>,
     nest: Nest,
     grid: PheromoneGrid,
+    selected: Option<usize>,
 }
 
 impl SimState {
-    const NUM_ANTS: u32 = 1000;
+    const NUM_ANTS: u32 = 100;
     const TILES_WIDTH: usize = 150;
     const TILES_HEIGHT: usize = 150;
 
@@ -45,6 +46,7 @@ impl SimState {
             food,
             nest,
             grid,
+            selected: None,
         }
     }
 }
@@ -68,7 +70,29 @@ async fn main() {
         state.nest.render();
         state.ants.iter().for_each(|ant| ant.render());
 
+        if let Some(selected_ind) = state.selected {
+            state.ants[selected_ind].render_selected();
+        }
+
         state.grid.update(dt, &state.ants);
+
+        if is_mouse_button_released(MouseButton::Left) {
+            let (x, y) = mouse_position();
+            let pos = Vec2::new(x, y);
+            let selected = state
+                .ants
+                .iter()
+                .enumerate()
+                .min_by(|(i1, ant1), (i2, ant2)| {
+                    let dist1 = ant1.pos().distance(pos);
+                    let dist2 = ant2.pos().distance(pos);
+                    return dist1.total_cmp(&dist2);
+                });
+            match selected {
+                None => {}
+                Some((index, _)) => state.selected = Some(index),
+            }
+        }
 
         next_frame().await
     }

@@ -2,14 +2,15 @@ use crate::SimState;
 use crate::food::Food;
 use crate::nest::Nest;
 use crate::pheremone::{PheromoneGrid, PheromoneTile};
-use macroquad::color::{BROWN, GREEN, RED};
+use macroquad::color::{BROWN, Color, GREEN, PINK, RED};
 use macroquad::math::{FloatExt, Vec2};
-use macroquad::prelude::{BLUE, draw_rectangle, screen_height};
+use macroquad::prelude::{BLUE, draw_circle_lines, draw_rectangle, draw_text, screen_height};
 use macroquad::rand::RandGenerator;
 use macroquad::shapes::{DrawRectangleParams, draw_circle, draw_rectangle_ex};
 use macroquad::window::screen_width;
 use std::cmp::min;
 use std::f32::consts::{PI, TAU};
+use std::fmt::format;
 
 pub struct Ant {
     pos: Vec2,
@@ -27,8 +28,8 @@ impl Ant {
     const RANDOM_ROTATE_RANGE: f32 = TAU / 40.0;
     const EDGE_SHYNESS: f32 = 0.05; // % from distance
 
-    const TURN_HOME_STRENGTH: f32 = 0.005;
-    const TURN_FOOD_STRENGTH: f32 = 0.02;
+    const TURN_HOME_STRENGTH: f32 = 0.7;
+    const TURN_FOOD_STRENGTH: f32 = 0.7;
 
     pub fn new(x: f32, y: f32, dir: f32) -> Self {
         Ant {
@@ -48,7 +49,11 @@ impl Ant {
         grid: &PheromoneGrid,
     ) {
         self.pos += Vec2::from_angle(self.direction) * dt * Ant::SPEED;
-        self.giving_off_amount *= 0.999;
+        if (self.has_food) {
+            self.giving_off_amount *= 0.999;
+        } else {
+            self.giving_off_amount *= 0.99;
+        }
 
         // Check food
         if (!self.has_food) {
@@ -57,6 +62,7 @@ impl Ant {
                     self.has_food = true;
                     food.take();
                     self.giving_off_amount = 1.0;
+                    self.direction += PI;
                 }
                 None => {}
             };
@@ -65,6 +71,7 @@ impl Ant {
                 nest.give(rand);
                 self.has_food = false;
                 self.giving_off_amount = 1.0;
+                self.direction += PI;
             }
         }
 
@@ -74,6 +81,16 @@ impl Ant {
         self.turn_away_from_edges();
 
         self.direction %= TAU;
+    }
+
+    pub fn render_selected(&self) {
+        self.render_in_color(PINK);
+        draw_circle_lines(self.pos.x, self.pos.y, Self::HEIGHT * 1.5, 5.0, RED);
+        let text = format!("Direction: {:.2}", self.direction);
+        draw_text(text, 10.0, 30.0, 30.0, RED);
+        self.get_sample_points().iter().for_each(|(_, p)| {
+            draw_circle(p.x, p.y, 5.0, PINK);
+        })
     }
 
     pub fn get_food_at(food: &mut [Food], pos: Vec2) -> Option<&mut Food> {
@@ -149,11 +166,10 @@ impl Ant {
         self.direction += dir / 5.0
     }
 
-    pub fn render(&self) {
-        let color = if self.has_food { RED } else { GREEN };
+    fn render_in_color(&self, color: Color) {
         draw_rectangle_ex(
-            self.pos.x - Ant::WIDTH / 2.0,
-            self.pos.y - Ant::HEIGHT / 2.0,
+            self.pos.x,
+            self.pos.y,
             Ant::WIDTH,
             Ant::HEIGHT,
             DrawRectangleParams {
@@ -162,10 +178,11 @@ impl Ant {
                 offset: Vec2 { x: 0.5, y: 0.5 },
             },
         );
+    }
 
-        // self.get_sample_points().iter().for_each(|(_, p)| {
-        //     draw_circle(p.x, p.y, 5.0, BROWN);
-        // })
+    pub fn render(&self) {
+        let color = if self.has_food { RED } else { GREEN };
+        self.render_in_color(color);
     }
 
     pub fn has_food(&self) -> bool {
