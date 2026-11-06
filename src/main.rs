@@ -29,14 +29,14 @@ impl SimState {
 
         for i in 0..Self::NUM_ANTS {
             ants.push(Ant::new(
-                screen_width() / 2.0,
-                screen_height() / 2.0,
+                500.0,
+                500.0,
                 2.0 * PI * (i as f32) / (Self::NUM_ANTS as f32),
             ));
         }
 
         let mut food = Vec::new();
-        food.push(Food::new(Vec2 { x: 100.0, y: 100.0 }, 50));
+        food.push(Food::new(Vec2 { x: 100.0, y: 100.0 }, 5000));
 
         let nest = Nest::new(500.0, 500.0, 10.0);
         let grid = PheromoneGrid::new(Self::TILES_WIDTH, Self::TILES_HEIGHT);
@@ -61,7 +61,7 @@ async fn main() {
         state
             .ants
             .iter_mut()
-            .for_each(|ant| ant.step(dt, &rand, &mut state.food, &mut state.nest));
+            .for_each(|ant| ant.step(dt, &rand, &mut state.food, &mut state.nest, &state.grid));
 
         state.grid.render();
         state.food.iter().for_each(|food| food.render());

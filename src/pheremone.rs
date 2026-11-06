@@ -1,5 +1,6 @@
 use crate::ant::Ant;
 use macroquad::color::RED;
+use macroquad::math::Vec2;
 use macroquad::prelude::{Color, screen_width};
 use macroquad::shapes::draw_rectangle;
 use macroquad::window::screen_height;
@@ -84,6 +85,17 @@ impl PheromoneGrid {
                 }
             }
         })
+    }
+
+    pub fn get_at_point(&self, pos: Vec2) -> Option<&PheromoneTile> {
+        if pos.x <= 0.0 || pos.x >= screen_width() || pos.y <= 0.0 || pos.y >= screen_height() {
+            return None;
+        }
+        let (tile_width, tile_height) = self.get_tile_sizes();
+
+        let i = (pos.x / tile_width) as usize;
+        let j = (pos.y / tile_height) as usize;
+        Some(&self.tiles[i * self.width + j])
     }
 }
 

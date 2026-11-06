@@ -1,8 +1,9 @@
 use crate::SimState;
 use crate::food::Food;
 use crate::nest::Nest;
+use crate::pheremone::{PheromoneGrid, PheromoneTile};
 use macroquad::color::{GREEN, RED};
-use macroquad::math::Vec2;
+use macroquad::math::{FloatExt, Vec2};
 use macroquad::prelude::{BLUE, draw_rectangle, screen_height};
 use macroquad::rand::RandGenerator;
 use macroquad::shapes::{DrawRectangleParams, draw_rectangle_ex};
@@ -25,6 +26,9 @@ impl Ant {
     const RANDOM_ROTATE_RANGE: f32 = TAU / 40.0;
     const EDGE_SHYNESS: f32 = 0.05; // % from distance
 
+    const TURN_HOME_STRENGTH: f32 = 1.0;
+    const TURN_FOOD_STRENGTH: f32 = 1.0;
+
     pub fn new(x: f32, y: f32, dir: f32) -> Self {
         Ant {
             pos: Vec2 { x, y },
@@ -33,7 +37,14 @@ impl Ant {
         }
     }
 
-    pub fn step(&mut self, dt: f32, rand: &RandGenerator, food: &mut Vec<Food>, nest: &mut Nest) {
+    pub fn step(
+        &mut self,
+        dt: f32,
+        rand: &RandGenerator,
+        food: &mut Vec<Food>,
+        nest: &mut Nest,
+        grid: &PheromoneGrid,
+    ) {
         self.pos += Vec2::from_angle(self.direction) * dt * Ant::SPEED;
 
         // Check food
@@ -54,6 +65,7 @@ impl Ant {
 
         // Update rotation
         self.direction += rand.gen_range(-Self::RANDOM_ROTATE_RANGE, Self::RANDOM_ROTATE_RANGE);
+        self.turn_for_pheromones(grid);
         self.turn_away_from_edges();
 
         self.direction %= TAU;
@@ -102,6 +114,30 @@ impl Ant {
             }
             self.direction = dir_vec.to_angle();
         }
+    }
+
+    fn get_sample_points(&self) -> Vec<(f32, Vec2)> {
+        const ANGLES: [f32; 5] = [-2.0 * PI / 5.0, -PI / 5.0, 0.0, PI / 5.0, 2.0 * PI / 5.0];
+        ANGLES
+            .iter()
+            .map(|angle| {
+                (
+                    *angle,
+                    Vec2::from_angle(*angle + self.direction) * Self::HEIGHT * 1.2 + self.pos,
+                )
+            })
+            .collect()
+    }
+
+    fn turn_for_pheromones(&mut self, grid: &PheromoneGrid) {
+        self.get_sample_points().iter().for_each(|(angle, point)| {
+            let influence: f32 = match (grid.get_at_point(*point), self.has_food) {
+                (None, _) => 0.0,
+                (Some(tile), true) => tile.from_home * Self::TURN_HOME_STRENGTH,
+                (Some(tile), false) => tile.from_food * Self::TURN_FOOD_STRENGTH,
+            };
+            self.direction.lerp(*angle, influence);
+        });
     }
 
     pub fn render(&self) {
