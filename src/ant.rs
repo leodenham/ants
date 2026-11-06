@@ -1,6 +1,9 @@
-use macroquad::color::RED;
+use crate::SimState;
+use crate::food::Food;
+use crate::nest::Nest;
+use macroquad::color::{GREEN, RED};
 use macroquad::math::Vec2;
-use macroquad::prelude::{draw_rectangle, screen_height};
+use macroquad::prelude::{BLUE, draw_rectangle, screen_height};
 use macroquad::rand::RandGenerator;
 use macroquad::shapes::{DrawRectangleParams, draw_rectangle_ex};
 use macroquad::window::screen_width;
@@ -10,6 +13,7 @@ use std::f32::consts::{PI, TAU};
 pub struct Ant {
     pos: Vec2,
     direction: f32,
+    has_food: bool,
 }
 
 impl Ant {
@@ -25,17 +29,38 @@ impl Ant {
         Ant {
             pos: Vec2 { x, y },
             direction: dir,
+            has_food: false,
         }
     }
 
-    pub fn step(&mut self, dt: f32, rand: &RandGenerator) {
+    pub fn step(&mut self, dt: f32, rand: &RandGenerator, food: &mut Vec<Food>, nest: &mut Nest) {
         self.pos += Vec2::from_angle(self.direction) * dt * Ant::SPEED;
+
+        // Check food
+        if (!self.has_food) {
+            match Self::get_food_at(food, self.pos) {
+                Some(food) => {
+                    self.has_food = true;
+                    food.take();
+                }
+                None => {}
+            };
+        } else {
+            if nest.does_overlap(self.pos) {
+                nest.give(rand);
+                self.has_food = false;
+            }
+        }
 
         // Update rotation
         self.direction += rand.gen_range(-Self::RANDOM_ROTATE_RANGE, Self::RANDOM_ROTATE_RANGE);
         self.turn_away_from_edges();
 
         self.direction %= TAU;
+    }
+
+    pub fn get_food_at(food: &mut [Food], pos: Vec2) -> Option<&mut Food> {
+        food.iter_mut().find(|f| f.does_overlap(pos))
     }
 
     fn turn_away_from_edges(&mut self) {
@@ -80,6 +105,7 @@ impl Ant {
     }
 
     pub fn render(&self) {
+        let color = if self.has_food { RED } else { GREEN };
         draw_rectangle_ex(
             self.pos.x - Ant::WIDTH / 2.0,
             self.pos.y - Ant::HEIGHT / 2.0,
@@ -87,9 +113,17 @@ impl Ant {
             Ant::HEIGHT,
             DrawRectangleParams {
                 rotation: self.direction + PI / 2.0,
-                color: RED,
+                color: color,
                 offset: Vec2 { x: 0.5, y: 0.5 },
             },
         );
+    }
+
+    pub fn has_food(&self) -> bool {
+        self.has_food
+    }
+
+    pub fn pos(&self) -> Vec2 {
+        self.pos
     }
 }
